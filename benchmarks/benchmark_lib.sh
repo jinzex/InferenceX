@@ -3013,6 +3013,12 @@ build_replay_cmd() {
     local result_dir="$1"
     local duration="$DURATION"
     local warmup_requests_per_lane="${AIPERF_WARMUP_REQUESTS_PER_LANE:-10}"
+    local export_level="${AIPERF_EXPORT_LEVEL:-records}"
+
+    case "$export_level" in
+        summary|records|raw) ;;
+        *) echo "Error: AIPERF_EXPORT_LEVEL must be summary, records, or raw" >&2; return 1 ;;
+    esac
 
     # Fast mode minimizes setup by advancing each trajectory lane only once
     # and shortens profiling to 20 minutes.
@@ -3147,6 +3153,10 @@ build_replay_cmd() {
     # Without this, aiperf only emits aggregate stats and the 6x2 panels
     # collapse to flat lines.
     REPLAY_CMD+=" --slice-duration 1.0"
+    REPLAY_CMD+=" --export-level $export_level"
+    if [[ "${AIPERF_EXPORT_OUTPUTS_JSON:-0}" == "1" ]]; then
+        REPLAY_CMD+=" --export-outputs-json"
+    fi
     # Multi-node launchers can provide the Prometheus endpoints for every
     # inference worker as a comma-separated list. AIPerf accepts multiple
     # values after one --server-metrics flag and preserves endpoint_url on

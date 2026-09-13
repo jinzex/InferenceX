@@ -3,8 +3,8 @@ set -euo pipefail
 set -x
 
 # AgentX trace replay for Qwen3.5-397B-A17B NVFP4 on B300 with SGLang
-# native NEXTN MTP. Throughput uses the committed golden synthetic AL; evals
-# retain real target-model verification.
+# optional native NEXTN MTP. ACCEPTANCE_MODE selects natural or committed golden
+# acceptance; evals retain real target-model verification.
 
 source "$(dirname "$0")/../../benchmark_lib.sh"
 
@@ -12,10 +12,16 @@ source "$(dirname "$0")/../../benchmark_lib.sh"
 export EVAL_FRAMEWORK="lm-eval"
 
 check_env_vars \
-    MODEL TP CONC EP_SIZE KV_OFFLOADING \
+    MODEL TP CONC EP_SIZE KV_OFFLOADING SPEC_DECODING \
     TOTAL_CPU_DRAM_GB RESULT_DIR DURATION
 
 SCHEDULER_RECV_INTERVAL=${SCHEDULER_RECV_INTERVAL:-10}
+ACCEPTANCE_MODE=${ACCEPTANCE_MODE:-synthetic}
+
+case "$ACCEPTANCE_MODE" in
+    natural|synthetic) ;;
+    *) echo "Error: ACCEPTANCE_MODE must be natural or synthetic" >&2; exit 1 ;;
+esac
 
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     echo "JOB $SLURM_JOB_ID running on ${SLURMD_NODENAME:-unknown}"
@@ -97,8 +103,10 @@ fi
 # requests. Leave room for subagent fan-out and avoid spending HBM on graphs
 # above the batch sizes that remain useful for this long-context workload.
 MAX_RUNNING_REQUESTS=$((2 * CONC))
-CUDA_GRAPH_MAX_BS="$CONC"
-[ "$CUDA_GRAPH_MAX_BS" -gt 64 ] && CUDA_GRAPH_MAX_BS=64
+# CUDA_GRAPH_MAX_BS="$CONC"
+# [ "$CUDA_GRAPH_MAX_BS" -gt 64 ] && CUDA_GRAPH_MAX_BS=64
+CUDA_GRAPH_MAX_BS=$((2 * CONC))
+[ "$CUDA_GRAPH_MAX_BS" -gt 96 ] && CUDA_GRAPH_MAX_BS=96
 
 export TORCH_CUDA_ARCH_LIST="10.0"
 export PYTHONNOUSERSITE=1
@@ -109,11 +117,26 @@ export SGLANG_ENABLE_FLASHINFER_GEMM=true
 # timeout so bursty AgentX trajectories cannot reuse a closing idle socket.
 export SGLANG_TIMEOUT_KEEP_ALIVE=1800
 
-if [ "${EVAL_ONLY:-false}" != "true" ]; then
+unset SGLANG_SIMULATE_ACC_LEN SGLANG_SIMULATE_ACC_METHOD SGLANG_SIMULATE_ACC_TOKEN_MODE
+if [[ "$SPEC_DECODING" == "mtp" && "$ACCEPTANCE_MODE" == "synthetic" && "${EVAL_ONLY:-false}" != "true" ]]; then
     export SGLANG_SIMULATE_ACC_LEN=3.39
     export SGLANG_SIMULATE_ACC_METHOD=match-expected
     export SGLANG_SIMULATE_ACC_TOKEN_MODE=real-draft-token
 fi
+
+SPEC_ARGS=()
+case "$SPEC_DECODING" in
+    mtp)
+        SPEC_ARGS=(
+            --speculative-algorithm NEXTN
+            --speculative-num-steps 3
+            --speculative-eagle-topk 1
+            --speculative-num-draft-tokens 4
+        )
+        ;;
+    none) ;;
+    *) echo "Error: unsupported SPEC_DECODING=$SPEC_DECODING" >&2; exit 1 ;;
+esac
 
 SGLANG_CMD=(
     python3 -m sglang.launch_server
@@ -141,10 +164,7 @@ SGLANG_CMD=(
     --tokenizer-path "$MODEL"
     --reasoning-parser qwen3
     --tool-call-parser qwen3_coder
-    --speculative-algorithm NEXTN
-    --speculative-num-steps 3
-    --speculative-eagle-topk 1
-    --speculative-num-draft-tokens 4
+    "${SPEC_ARGS[@]}"
     --enable-metrics
     --enable-cache-report
     "${CACHE_ARGS[@]}"
