@@ -105,12 +105,15 @@ esac
 
 export PYTHONNOUSERSITE=1
 export SGLANG_TIMEOUT_KEEP_ALIVE=1800
+export RUNAI_STREAMER_DIST_GLOBAL=1
 
 SERVER_LOG="$RESULT_DIR/server-node${NODE_RANK}.log"
 STOP_FILE="$RESULT_DIR/server.stop"
 SGLANG_CMD=(
     python3 -m sglang.launch_server
     --model-path "$MODEL_PATH"
+    --load-format runai_streamer
+    --model-loader-extra-config '{"distributed":true}'
     --served-model-name "$MODEL"
     --host 0.0.0.0
     --port "$PORT"

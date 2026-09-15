@@ -141,6 +141,8 @@ esac
 SGLANG_CMD=(
     python3 -m sglang.launch_server
     --model-path "$MODEL_PATH"
+    --load-format runai_streamer
+    --model-loader-extra-config '{"distributed":true}'
     --served-model-name "$MODEL"
     --host 0.0.0.0
     --port "$PORT"

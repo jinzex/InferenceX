@@ -73,6 +73,7 @@ start_gpu_monitor
 set -x
 PYTHONNOUSERSITE=1 python3 -m sglang.launch_server --model-path $MODEL_PATH --served-model-name $MODEL --host 0.0.0.0 --port $PORT \
 --trust-remote-code \
+--load-format runai_streamer --model-loader-extra-config '{"distributed":true}' \
 --tensor-parallel-size $TP --data-parallel-size 1 --ep-size $EP_SIZE \
 --reasoning-parser qwen3 \
 --tool-call-parser qwen3_coder \
