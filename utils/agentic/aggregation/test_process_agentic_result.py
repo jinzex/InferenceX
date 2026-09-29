@@ -411,6 +411,17 @@ def test_processor_emits_component_metadata_when_present(tmp_path: Path):
     assert agg["kv_p2p_transfer"] == "mooncake"
 
 
+def test_processor_emits_explicit_dp_size(tmp_path: Path):
+    result_dir = _write_fixture(tmp_path)
+    agg = _run_processor(
+        result_dir,
+        tmp_path / "out",
+        env_overrides={"DP_SIZE": "8"},
+    )
+
+    assert agg["dp_size"] == 8
+
+
 def test_processor_omits_component_metadata_when_absent(tmp_path: Path):
     result_dir = _write_fixture(tmp_path)
     agg = _run_processor(result_dir, tmp_path / "out")

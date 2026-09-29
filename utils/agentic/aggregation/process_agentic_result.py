@@ -235,6 +235,8 @@ def build_agg(
         "num_requests_successful": len(records),
         "request_accounting": request_accounting,
     }
+    if "DP_SIZE" in os.environ:
+        agg["dp_size"] = env_int("DP_SIZE")
     agg.update(multinode_fields)
 
     router = optional_component_metadata("ROUTER_METADATA")
