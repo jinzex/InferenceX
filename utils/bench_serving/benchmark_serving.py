@@ -28,6 +28,7 @@ import asyncio
 import base64
 import contextlib
 import gc
+import importlib
 import io
 import json
 import os
@@ -109,6 +110,9 @@ def _load_tokenizer(tokenizer_id, tokenizer_mode, trust_remote_code):
     transformers). Prefer backend_request_func.get_tokenizer on fallback so
     client tokenization stays aligned with the sglang server (#1381, #1428).
     """
+    if config_registry_module := os.environ.get("HF_CONFIG_REGISTRY_MODULE"):
+        importlib.import_module(config_registry_module)
+
     if tokenizer_mode == "deepseek_v4":
         # HF AutoTokenizer may not recognize deepseek_v4; use vLLM's loader.
         try:
