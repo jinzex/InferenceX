@@ -801,9 +801,8 @@ def _fixed_sequence_entries(
         dp_attn = benchmark.get(Fields.DP_ATTN.value)
 
     entries = []
-    # Multi-node rows carry the whole concurrency list; single-node rows carry
-    # one point. Keep point-major, runner-minor order for existing consumers.
-    for conc in [conc_values] if is_multinode else conc_values:
+    # Emit one point per row; retain the multi-node list schema.
+    for conc in [[c] for c in conc_values] if is_multinode else conc_values:
         for runner in runners:
             entry = {
                 Fields.IMAGE.value: config[Fields.IMAGE.value],

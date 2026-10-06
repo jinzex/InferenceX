@@ -1676,7 +1676,7 @@ class TestEdgeCases:
         assert result[0]["disagg"] is False
 
     def test_multinode_conc_range_expansion(self, sample_runner_config, full_sweep_args_multi_node):
-        """Multinode with conc range should expand to list."""
+        """Multinode ranges produce one singleton-list row per concurrency."""
         config = {
             "test-config": {
                 "image": "test-image",
@@ -1722,9 +1722,8 @@ class TestEdgeCases:
             config,
             sample_runner_config
         )
-        assert len(result) == 1
         # step_size=2: 1, 2, 4, 8
-        assert result[0]["conc"] == [1, 2, 4, 8]
+        assert [entry["conc"] for entry in result] == [[1], [2], [4], [8]]
 
     def test_max_ep_creates_config_when_below_min(self, sample_runner_config, full_sweep_args_single_node):
         """max_ep below config's ep should create config with max_ep value."""
