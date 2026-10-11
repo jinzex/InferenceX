@@ -3066,11 +3066,11 @@ build_replay_cmd() {
     # live sample while retaining AIPERF_FAILED_REQUEST_THRESHOLD as the strict
     # post-run validity gate below.
     REPLAY_CMD+=" --failed-request-threshold $AIPERF_LIVE_FAILED_REQUEST_THRESHOLD"
-    # Sample each trajectory's warmup start position uniformly from
+    # By default, sample each trajectory's warmup start position uniformly from
     # [25%, 75%] of the trace's turn count, clamped by AIPerf to leave at
     # least one profile turn after warmup.
-    REPLAY_CMD+=" --trajectory-start-min-ratio 0.25"
-    REPLAY_CMD+=" --trajectory-start-max-ratio 0.75"
+    REPLAY_CMD+=" --trajectory-start-min-ratio ${AIPERF_TRAJECTORY_START_MIN_RATIO:-0.25}"
+    REPLAY_CMD+=" --trajectory-start-max-ratio ${AIPERF_TRAJECTORY_START_MAX_RATIO:-0.75}"
     # After the normal t* snapshot primers, advance every trajectory lane by
     # this many additional one-token requests with no idle delay. Profiling
     # begins after those requests drain and resumes from the resulting live
