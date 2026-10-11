@@ -3308,7 +3308,9 @@ run_agentic_replay_and_write_outputs() (
         trap '_stop_agentx_power_monitor; exit 143' TERM
     fi
 
-    echo "$REPLAY_CMD" > "$result_dir/benchmark_command.txt"
+    local recorded_cmd="${REPLAY_CMD/#"$AIPERF_CLI"/aiperf}"
+    recorded_cmd="${recorded_cmd//"$result_dir"/"$(realpath --no-symlinks --relative-to="$PWD" "$result_dir")"}"
+    printf '%s\n' "$recorded_cmd" > "$result_dir/benchmark_command.txt"
 
     set +e
     set -x
