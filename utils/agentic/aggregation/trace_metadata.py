@@ -66,8 +66,19 @@ def _iter_trace_blobs(traces_dir: Path):
             continue
 
 
+def _request_metadata(req: dict[str, Any]) -> dict[str, Any]:
+    output_length = req.get("output_length")
+    if output_length is None:
+        output_length = req.get("out")
+    return {
+        "type": req.get("type"),
+        "output_length": int(output_length) if output_length is not None else None,
+        "requests": [_request_metadata(child) for child in req.get("requests", [])],
+    }
+
+
 def load_trace_metadata() -> dict[str, list[dict[str, Any]]]:
-    """Build {trace_id: [{hash_ids, output_length}, ...]} from local HF cache."""
+    """Load output lengths without changing original outer or inner indices."""
     global _TRACE_METADATA_CACHE
     if _TRACE_METADATA_CACHE is not None:
         return _TRACE_METADATA_CACHE
@@ -82,19 +93,7 @@ def load_trace_metadata() -> dict[str, list[dict[str, Any]]]:
         trace_id = blob.get("id")
         if not trace_id:
             continue
-        per_turn: list[dict[str, Any]] = []
-        for req in blob.get("requests", []):
-            if req.get("type") not in ("n", "s"):
-                continue
-            output_length = req.get("output_length")
-            if output_length is None:
-                output_length = req.get("out")
-            per_turn.append(
-                {
-                    "hash_ids": list(req.get("hash_ids") or []),
-                    "output_length": int(output_length or 0),
-                }
-            )
+        per_turn = [_request_metadata(req) for req in blob.get("requests", [])]
         if per_turn:
             out[str(trace_id)] = per_turn
 
@@ -110,12 +109,32 @@ def expected_output_lengths(records: list[dict[str, Any]]) -> list[int]:
     expected: list[int] = []
     for record in records:
         record_metadata = record.get("metadata", {})
+        source_trace_id = record_metadata.get("source_trace_id")
+        outer_idx = record_metadata.get("source_outer_idx")
+        if source_trace_id is not None and outer_idx is not None:
+            # Replay turn indices restart after slicing and within child sessions.
+            turns = metadata.get(str(source_trace_id), [])
+            if not 0 <= outer_idx < len(turns):
+                continue
+            req = turns[outer_idx]
+            inner_idx = record_metadata.get("source_inner_idx")
+            if inner_idx is not None:
+                children = req["requests"]
+                if not 0 <= inner_idx < len(children):
+                    continue
+                req = children[inner_idx]
+            if req["output_length"] is not None:
+                # Weka raises zero-length outputs to one sendable token.
+                expected.append(max(1, req["output_length"]))
+            continue
+
+        # Retain the lookup for older exports without source indices.
         trace_id = conversation_id_to_trace_id(record_metadata.get("conversation_id"))
         turn_index = record_metadata.get("turn_index")
         if trace_id is None or turn_index is None:
             continue
-        turns = metadata.get(trace_id)
-        if not turns or turn_index >= len(turns):
+        turns = [req for req in metadata.get(trace_id, []) if req["type"] in ("n", "s")]
+        if not 0 <= turn_index < len(turns):
             continue
-        expected.append(int(turns[int(turn_index)]["output_length"]))
+        expected.append(int(turns[int(turn_index)]["output_length"] or 0))
     return expected

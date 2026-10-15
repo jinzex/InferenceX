@@ -45,6 +45,8 @@ python3 utils/process_result.py
 
 来源：[单节点处理/上传](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/benchmark-tmpl.yml#L289-L323)、[多节点处理/上传](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/benchmark-multinode-tmpl.yml#L345-L387)、[`process_result.py` 契约](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/utils/process_result.py#L43-L75)、[吞吐量收集器](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/collect-results.yml#L25-L38)。
 
+AgentX 的 `request_metrics.tokens.output_expected` 使用导出的源索引定位原始主请求或子请求，而不是回放轮次。没有源索引的旧导出文件仍使用原来的轮次查找方式。
+
 ### 评测结果
 
 评测任务上传以 `eval_${EXP_NAME}_${RESULT_FILENAME}` 命名的逐配置制品。制品包含该评测器实际生成的文件，例如 `meta_env.json`、`results*.json`、`sample*.jsonl`；对于受支持的 agentic 评测器，还可能包含 predictions、reports 或 trajectories。工作流的以下行为都是有意设计的：

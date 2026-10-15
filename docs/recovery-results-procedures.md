@@ -45,6 +45,8 @@ The uploaded `bmk_${RESULT_FILENAME}` artifact contains `agg_${RESULT_FILENAME}_
 
 Sources: [single-node process/upload](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/benchmark-tmpl.yml#L289-L323), [multi-node process/upload](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/benchmark-multinode-tmpl.yml#L345-L387), [`process_result.py` contract](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/utils/process_result.py#L43-L75), [throughput collector](https://github.com/SemiAnalysisAI/InferenceX/blob/0c28706b33d4a796b82f6f9c3594c19c46365575/.github/workflows/collect-results.yml#L25-L38).
 
+For AgentX, `request_metrics.tokens.output_expected` uses exported source indices to locate the original main or child request, not the replay turn number. Older exports without source indices retain the legacy turn lookup.
+
 ### Eval results
 
 Eval jobs upload per-config artifacts named `eval_${EXP_NAME}_${RESULT_FILENAME}`. They contain the files that exist for that evaluator, including `meta_env.json`, `results*.json`, `sample*.jsonl`, and, for supported agentic evaluators, predictions, reports, or trajectories. The workflow behavior is deliberate:
