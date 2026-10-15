@@ -22,7 +22,10 @@ class SglangBackend(ServerMetricsBackend):
     name = "sglang"
     _RANK_RE = re.compile(r"\b(?P<tag>DP\d+\s+TP\d+\s+EP\d+)\b")
     _MAX_TOKENS_RE = re.compile(r"\bmax_total_num_tokens=(?P<tokens>\d+)\b")
-    _DP_SIZE_RE = re.compile(r"\bdp_size=(?P<dp_size>\d+)\b")
+    _DP_SIZE_RE = re.compile(r"\bdp_size[\"']?\s*[:=]\s*(?P<dp_size>\d+)\b")
+    _ATTN_DP_SIZE_RE = re.compile(
+        r"\battn_dp_size[\"']?\s*[:=]\s*(?P<attn_dp_size>\d+)\b"
+    )
 
     def matches(self, metrics: dict[str, dict[str, Any]], framework: str) -> bool:
         metric_names = set(metrics)
@@ -191,4 +194,6 @@ class SglangBackend(ServerMetricsBackend):
         if not match:
             return None
         dp_size = int(match.group("dp_size"))
-        return dp_size if dp_size > 0 else None
+        attn_match = cls._ATTN_DP_SIZE_RE.search(server_log)
+        attn_dp_size = int(attn_match.group("attn_dp_size")) if attn_match else 1
+        return dp_size * attn_dp_size if dp_size > 0 and attn_dp_size > 0 else None

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from utils.agentic.aggregation.backends.dynamo_vllm import DynamoVllmBackend
 from utils.agentic.aggregation.backends.sglang import SglangBackend
 from utils.agentic.aggregation.backends.vllm import VllmBackend
@@ -83,6 +85,24 @@ def test_kv_cache_pool_tokens_from_sglang_per_rank_lines() -> None:
     )
 
     assert SglangBackend.kv_cache_pool_tokens_from_server_log(log) == 2200
+
+
+@pytest.mark.parametrize(
+    ("server_args", "expected"),
+    [
+        ("{'dp_size': 4}", 4000),
+        ("{'dp_size': 1, 'attn_dp_size': 4}", 4000),
+        ('{"attn_dp_size": 4, "dp_size": 2}', 8000),
+        ("ServerArgs(dp_size=2, attn_dp_size=4)", 8000),
+        ("{'dp_size': 1, 'attn_dp_size': 1}", 1000),
+    ],
+)
+def test_sglang_capacity_counts_attention_dp_ranks(
+    server_args: str, expected: int
+) -> None:
+    log = f"server_args={server_args}\n[DP0 TP0 EP0] max_total_num_tokens=1000"
+
+    assert SglangBackend.kv_cache_pool_tokens_from_server_log(log) == expected
 
 
 def test_kv_cache_pool_tokens_sums_multiple_log_files(tmp_path: Path) -> None:
